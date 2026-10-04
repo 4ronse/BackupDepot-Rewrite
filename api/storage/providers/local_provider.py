@@ -1,0 +1,84 @@
+import os
+from pathlib import Path
+import shutil
+from typing import Iterator
+
+from pydantic import BaseModel
+
+from api.storage.base_provider import StorageUsage
+from api.storage.exceptions import ObjectNotFound, StorageError
+from api.storage.registry import register
+
+from ..base_provider import CHUNK, StorageProvider, EmptyModel, StorageType, StoredObject
+
+class LocalConfig(BaseModel):
+    base_path: Path
+
+@register
+class LocalProvider(StorageProvider[LocalConfig, EmptyModel]):
+    type = StorageType.LOCAL
+    config_model = LocalConfig
+    secrets_model = EmptyModel
+
+    def _path(self, ref: str) -> Path:
+        if ref.startswith('/'):
+            ref = '.' + ref
+        root = self.config.base_path.resolve()
+        path = (root / ref).resolve()
+        if not path.is_relative_to(root):   # block ../ and absolute-path tricks
+            raise StorageError('invalid object reference')
+        return path
+
+    def check(self) -> None:
+        root = self.config.base_path
+        root.mkdir(parents=True, exist_ok=True)
+        if not os.access(root, os.W_OK):
+            raise StorageError('storage directory is not writable')
+
+    def put(self, key: str, source: Path) -> StoredObject:
+        dest = self._path(key)
+        if not source.is_file():
+            raise StorageError('staging file is missing')
+        size = source.stat().st_size
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest.exists():
+            raise StorageError('object already exists')
+
+        try:
+            os.replace(source, dest)
+        except OSError:
+            self._copy_in(source, dest)
+
+        return StoredObject(ref=key, size=size)
+
+    @staticmethod
+    def _copy_in(source: Path, dest: Path) -> None:
+        tmp = dest.with_name(dest.name + '.part')
+        try:
+            shutil.copyfile(source, tmp)
+            with open(tmp, 'rb+') as f:
+                os.fsync(f.fileno())
+            os.replace(tmp, dest)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
+
+    def stream(self, ref: str) -> Iterator[bytes]:
+        path = self._path(ref)
+        try:
+            with open(path, 'rb') as f:
+                while chunk := f.read(CHUNK):
+                    yield chunk
+        except FileNotFoundError:
+            raise ObjectNotFound(ref) from None
+
+    def delete(self, ref: str) -> None:
+        self._path(ref).unlink(missing_ok=True)
+
+    def exists(self, ref: str) -> bool:
+        return self._path(ref).is_file()
+
+    def usage(self) -> StorageUsage:
+        res = shutil.disk_usage(self._path('/'))
+        return StorageUsage(res.used, res.total, res.free)

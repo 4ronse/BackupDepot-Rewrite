@@ -5,6 +5,8 @@ from sqlmodel import JSON, Column, Field
 from api.db.mixins import AuditedMixIn, UpdatedMixIn
 from api.db.models.audit import EntityType
 from api.db.utils import decrypt_secrets, encrypt_secrets
+from api.storage.base_provider import StorageProvider, StorageType
+from api.storage.registry import create_provider
 
 class StorageBackend(AuditedMixIn, UpdatedMixIn, table=True):
     __tablename__: str= "storage_backends"
@@ -13,10 +15,13 @@ class StorageBackend(AuditedMixIn, UpdatedMixIn, table=True):
     __audit_secret_fields__ = frozenset({'secrets_enc'})
 
     name: str = Field(index=True, unique=True)
-    type: str = Field(index=True)
+    type: StorageType = Field(index=True)
     config: dict = Field(sa_column=Column(JSON))
     secrets_enc: bytes | None = Field(default=None, nullable=True)
     created_by: int = Field(foreign_key="users.id", index=True)
+
+    def provider(self) -> StorageProvider:
+        return create_provider(self.type, self.config, self.secrets)
 
     @property
     def secrets(self) -> dict[str, Any]:
