@@ -1,6 +1,7 @@
 from sqlmodel import Field
 
 from api.db.mixins import AuditedMixIn, UpdatedMixIn
+from api.db.secret_box import SecretBox
 
 
 class AuthProvider(AuditedMixIn, UpdatedMixIn, table=True):
@@ -11,7 +12,7 @@ class AuthProvider(AuditedMixIn, UpdatedMixIn, table=True):
     type: str = Field(nullable=False, default="oauth")
     discovery_url: str = Field(nullable=False)
     client_id: str = Field(nullable=False)
-    client_secret: bytes = Field(nullable=False)
+    client_secret: str = Field(sa_column=SecretBox(str).column(nullable=False))
     scopes: str = Field(nullable=False, default="openid email profile")
     enabled: bool = Field(nullable=False, default=True)
     auto_create_users: bool = Field(nullable=False, default=True)

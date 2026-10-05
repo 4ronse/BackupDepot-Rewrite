@@ -7,6 +7,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, InvalidHashError
 
 from api.db.mixins import AuditedMixIn, UpdatedMixIn
+from api.db.secret_box import SecretBox
 from api.db.utc_datetime import UTCDateTime
 from api.db.audit_types import Actor, ActorRef, EntityType
 

@@ -34,5 +34,5 @@ def get_session():
 
 @contextmanager
 def session_scope():
-    with Session(engine) as session:
+    with Session(engine, expire_on_commit=False) as session:
         yield session
