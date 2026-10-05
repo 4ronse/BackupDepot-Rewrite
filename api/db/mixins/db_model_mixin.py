@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Self, Sequence
 
 from sqlalchemy import ColumnElement
-from sqlmodel import Field, SQLModel, Session, select
+from sqlmodel import Field, SQLModel, Session, col, select
 from api.db.utils import utcnow
 
 from api.db.utc_datetime import UTCDateTime
@@ -55,3 +55,7 @@ class DBModelMixIn(SQLModel):
     @classmethod
     def find_one(cls, session: Session, *clauses: ColumnElement[bool] | bool) -> Self | None:
         return session.exec(select(cls).where(*clauses)).first()
+
+    @classmethod
+    def last(cls, session: Session) -> Self | None:
+        return session.exec(select(cls).order_by(col(cls.id).desc())).first()
