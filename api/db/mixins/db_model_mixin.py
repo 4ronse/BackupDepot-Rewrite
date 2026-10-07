@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any, Self, Sequence
 
+from fastapi import HTTPException
 from sqlalchemy import ColumnElement
 from sqlmodel import Field, SQLModel, Session, col, select
 from api.db.utils import utcnow
@@ -59,3 +60,10 @@ class DBModelMixIn(SQLModel):
     @classmethod
     def last(cls, session: Session) -> Self | None:
         return session.exec(select(cls).order_by(col(cls.id).desc())).first()
+
+    @classmethod
+    def get_or_404(cls, session: Session, id: int) -> Self:
+        row = cls.get(session, id)
+        if row is None:
+            raise HTTPException(404)
+        return row
