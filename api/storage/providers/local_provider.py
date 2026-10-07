@@ -3,7 +3,7 @@ from pathlib import Path
 import shutil
 from typing import Iterator
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from api.storage.base_provider import StorageUsage
 from api.storage.exceptions import ObjectNotFound, StorageError
@@ -18,11 +18,20 @@ __all__ = ['LocalConfig', 'LocalProvider']
 class LocalConfig(BaseModel):
     base_path: Path
 
+    @field_validator('base_path')
+    @classmethod
+    def _absolute(cls, v: Path) -> Path:
+        if not v.is_absolute():
+            raise ValueError('base_path must be an absolute path')
+        return v
+
+
 @register
 class LocalProvider(StorageProvider[LocalConfig, EmptyModel]):
     type = StorageType.LOCAL
     config_model = LocalConfig
     secrets_model = EmptyModel
+    location_fields = frozenset({'base_path'})
 
     def _path(self, ref: str) -> Path:
         if ref.startswith('/'):

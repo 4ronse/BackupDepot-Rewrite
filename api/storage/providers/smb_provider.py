@@ -45,7 +45,10 @@ class SMBConfig(BaseModel):
         return '/'.join(parts)  # normalised, never leading or trailing slash
 
 class SMBSecrets(BaseModel):
-    password: str = Field(min_length=1)
+    password: str = Field(
+        min_length=1,
+        json_schema_extra={'format': 'password'}
+    )
 
 
 @register
@@ -53,6 +56,7 @@ class SMBProvider(StorageProvider[SMBConfig, SMBSecrets]):
     type = StorageType.SAMBA
     config_model = SMBConfig
     secrets_model = SMBSecrets
+    location_fields = frozenset({'share', 'base_path'})
 
     @contextmanager
     def _conn(self):

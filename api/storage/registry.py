@@ -12,7 +12,7 @@ def register[T: type[StorageProvider]](cls: T) -> T:
     return cls
 
 
-def create_provider(t: StorageType, config: dict, secerts: dict | None) -> StorageProvider:
+def create_provider(t: StorageType, config: dict | None, secerts: dict | None) -> StorageProvider:
     cls = _REGISTRY.get(t)
     if cls is None:
         raise StorageError(f'unsupported storage type: {t}')
@@ -25,5 +25,5 @@ def create_provider(t: StorageType, config: dict, secerts: dict | None) -> Stora
     return cls(cfg, sec)
 
 
-def get_provider_types() -> set[StorageType]:
-    return set(_REGISTRY.keys())
+def registered_providers() -> dict[StorageType, type[StorageProvider]]:
+    return dict(_REGISTRY)

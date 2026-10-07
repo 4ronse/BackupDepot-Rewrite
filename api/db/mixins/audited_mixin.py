@@ -148,7 +148,11 @@ class AuditedMixIn(DBModelMixIn):
             session.commit()
         return self
 
-    def delete(self, session: Session, ctx: ActorRef, *, commit: bool = False) -> None:
+    def delete(self, session: Session, ctx: ActorRef, *, extra: dict | None = None, commit: bool = False) -> None:
+        details = self._audit_fields()
+        if extra:
+            details.update(extra)
+
         self._audit(session, ctx, Operation.DELETE, self._audit_fields())
         session.delete(self)
         session.flush()

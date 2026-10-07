@@ -53,6 +53,7 @@ class StorageProvider[C: BaseModel, S: BaseModel](ABC):
     type: ClassVar[StorageType]
     config_model: ClassVar[type[BaseModel]]
     secrets_model: ClassVar[type[BaseModel]]
+    location_fields: ClassVar[frozenset[str]] = frozenset()
 
     def __init__(self, config: C, secrets: S) -> None:
         self.config: C = config

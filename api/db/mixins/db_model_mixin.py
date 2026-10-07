@@ -55,7 +55,7 @@ class DBModelMixIn(SQLModel):
 
     @classmethod
     def find_one(cls, session: Session, *clauses: ColumnElement[bool] | bool) -> Self | None:
-        return session.exec(select(cls).where(*clauses)).first()
+        return session.exec(select(cls).where(*clauses).limit(1)).first()
 
     @classmethod
     def last(cls, session: Session) -> Self | None:

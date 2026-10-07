@@ -30,6 +30,7 @@ class ActorRef:
     actor: Actor
     actor_id: int | None = None
     remote_addr: str | None = None
+SYSTEM = ActorRef(Actor.SYSTEM)
 
 @dataclass(frozen=True)
 class EntityRef:
