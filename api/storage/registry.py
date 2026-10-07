@@ -23,3 +23,7 @@ def create_provider(t: StorageType, config: dict, secerts: dict | None) -> Stora
         fields = sorted({'.'.join(map(str, err['loc'])) for err in e.errors(include_input=False)})
         raise StorageError(f'invalid storage configuration: {", ".join(fields)}') from None
     return cls(cfg, sec)
+
+
+def get_provider_types() -> set[StorageType]:
+    return set(_REGISTRY.keys())

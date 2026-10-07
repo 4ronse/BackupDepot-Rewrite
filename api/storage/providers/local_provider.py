@@ -9,7 +9,11 @@ from api.storage.base_provider import StorageUsage
 from api.storage.exceptions import ObjectNotFound, StorageError
 from api.storage.registry import register
 
-from ..base_provider import CHUNK, StorageProvider, EmptyModel, StorageType, StoredObject
+from ..base_provider import CHUNK_SIZE, StorageProvider, EmptyModel, StorageType, StoredObject
+
+
+__all__ = ['LocalConfig', 'LocalProvider']
+
 
 class LocalConfig(BaseModel):
     base_path: Path
@@ -65,13 +69,17 @@ class LocalProvider(StorageProvider[LocalConfig, EmptyModel]):
             raise
 
     def stream(self, ref: str) -> Iterator[bytes]:
-        path = self._path(ref)
+        # Try to open file BEFORE yielding data
         try:
-            with open(path, 'rb') as f:
-                while chunk := f.read(CHUNK):
-                    yield chunk
+            f = open(self._path(ref), 'rb')
         except FileNotFoundError:
             raise ObjectNotFound(ref) from None
+
+        def chunks() -> Iterator[bytes]:
+            with f:
+                while chunk := f.read(CHUNK_SIZE):
+                    yield chunk
+        return chunks()
 
     def delete(self, ref: str) -> None:
         self._path(ref).unlink(missing_ok=True)

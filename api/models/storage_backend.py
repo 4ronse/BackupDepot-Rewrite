@@ -1,5 +1,3 @@
-from typing import Any
-
 from sqlmodel import JSON, Column, Field
 
 from api.db.mixins import AuditedMixIn, UpdatedMixIn
@@ -12,7 +10,6 @@ from api.storage.registry import create_provider
 class StorageBackend(AuditedMixIn, UpdatedMixIn, table=True):
     __tablename__: str= "storage_backends"
     __entity_type__ = EntityType.STORAGE_BACKEND
-    __audit_exclude__ = frozenset({'secrets_enc'})
     __audit_secret_fields__ = frozenset({'secrets_enc'})
 
     name: str = Field(index=True, unique=True)

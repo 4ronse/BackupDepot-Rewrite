@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import ClassVar
 
 from sqlmodel import Field, Index
 
@@ -18,6 +19,13 @@ class BackupStatus(str, Enum):
     DELETED = 'DELETED'
 
 class Backup(AuditedMixIn, UpdatedMixIn, table=True):
+    IN_FLIGHT_STATUSES: ClassVar[set[BackupStatus]] = {
+        BackupStatus.UPLOADING_TO_SERVER,
+        BackupStatus.MOVING_TO_STORAGE_BACKEND,
+        BackupStatus.DELETING_FROM_STORAGE_BACKEND
+    }
+
+
     __tablename__: str = "backups"
     __entity_type__ = EntityType.BACKUP
     __audit_name_field__ = 'original_filename'

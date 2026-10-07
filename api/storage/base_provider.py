@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from .exceptions import *
 
-CHUNK = 1024 * 1024
+CHUNK_SIZE = 4 * 1024 * 1024  # 4 MiB
 
 def format_size(size: int | float) -> str:
     """Format size in bytes to a human-readable string."""
@@ -36,6 +36,7 @@ class StorageUsage:
         total = format_size(self.total_bytes) if self.total_bytes is not None else "Unknown"
         return used, total
 
+
 @dataclass(frozen=True)
 class StoredObject:
     ref: str  # Provider-specific reference to the stored object
@@ -43,6 +44,7 @@ class StoredObject:
 
 class StorageType(str, Enum):
     LOCAL = 'LOCAL'
+    SAMBA = 'SAMBA'
 
 class EmptyModel(BaseModel): ...
 
