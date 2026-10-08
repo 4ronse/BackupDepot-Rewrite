@@ -50,21 +50,7 @@ def get_single_backend(id: int, session: SessionDep):
 @router.delete('/{id}', status_code=204)
 def delete_single_backend(id: int, session: SessionDep, user: UserDep, confirm: str | None = None):
     row = StorageBackend.get_or_404(session, id)
-    impact = services.storage.compute_impact(session, id)
-
-    if impact.in_flight:
-        raise HTTPException(409, detail={
-            'message': 'Uploads are still in progress on this backend. Wait for them to finish.',
-            'data': impact
-        })
-
-    if impact.confirm_token is not None and confirm != impact.confirm_token:
-        raise HTTPException(409, detail={
-            'message': 'This backend is in use. Review the impact and resend with ?confirm=<token>.',
-            'data': impact.model_dump(),
-        })
-
-    services.storage.delete_backend(session, row, user.actor_ref, impact)
+    services.storage.delete_backend(session, row, user.actor_ref, confirm)
 
 @router.patch('/{id}', response_model=ResponseModel[StorageBackendRead])
 def update_single_backend(id: int, body: StorageBackendUpdate, session: SessionDep, user: UserDep):

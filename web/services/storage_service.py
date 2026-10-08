@@ -1,5 +1,6 @@
 import hashlib
 
+from fastapi import HTTPException
 from sqlmodel import Session, and_, col, delete, func, select
 
 from api.db.audit_types import ActorRef
@@ -81,9 +82,19 @@ def has_backups(session, id_or_row: int | StorageBackend) -> bool:
     ) is not None
 
 
-def delete_backend(session: Session, row: StorageBackend, actor: ActorRef, impact: StorageBackendImpact | None = None):
-    if not impact:
-        impact = compute_impact(session, row.id)  # type: ignore
+def delete_backend(session: Session, row: StorageBackend, actor: ActorRef, confirm: str | None = None):
+    impact = compute_impact(session, row.id)  # type: ignore
+
+    if impact.in_flight:
+        raise HTTPException(409, detail={
+            'message': 'Uploads are in progress on this endpoint. Wait for them to finish.',
+            'impact': impact.model_dump(),
+        })
+    if impact.confirm_token is not None and confirm != impact.confirm_token:
+        raise HTTPException(409, detail={
+            'message': 'This endpoint is in use. Review the impact and resend with ?confirm=<token>.',
+            'impact': impact.model_dump(),
+        })
 
     session.exec(delete(Backup).where(col(Backup.storage_backend_id) == row.id))
     session.exec(delete(UploadKey).where(
