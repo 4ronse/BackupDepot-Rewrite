@@ -88,12 +88,12 @@ def delete_backend(session: Session, row: StorageBackend, actor: ActorRef, confi
     if impact.in_flight:
         raise HTTPException(409, detail={
             'message': 'Uploads are in progress on this endpoint. Wait for them to finish.',
-            'impact': impact.model_dump(),
+            'data': impact.model_dump(),
         })
     if impact.confirm_token is not None and confirm != impact.confirm_token:
         raise HTTPException(409, detail={
             'message': 'This endpoint is in use. Review the impact and resend with ?confirm=<token>.',
-            'impact': impact.model_dump(),
+            'data': impact.model_dump(),
         })
 
     session.exec(delete(Backup).where(col(Backup.storage_backend_id) == row.id))
