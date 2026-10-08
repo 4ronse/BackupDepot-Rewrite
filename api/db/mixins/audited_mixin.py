@@ -131,7 +131,7 @@ class AuditedMixIn(DBModelMixIn):
     def insert(self, session: Session, ctx: ActorRef, *, commit: bool = False) -> Self:
         session.add(self)
         session.flush()
-        self._audit(session, ctx, Operation.CREATE, self._audit_fields())
+        self._audit(session, ctx, Operation.CREATE)
         if commit:
             session.commit()
         return self
