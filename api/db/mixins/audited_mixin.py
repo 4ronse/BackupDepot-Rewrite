@@ -1,5 +1,5 @@
 from functools import cache
-from typing import Any, ClassVar, Self, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Self, cast
 
 from pydantic_core import to_jsonable_python
 from sqlalchemy.orm import InstanceState, Mapper
@@ -9,7 +9,7 @@ from api.db.secret_box import SecretBox
 from api.db.utils import decrypt_secrets
 
 from .db_model_mixin import DBModelMixIn
-from ..audit_types import ActorRef, EntityRef, EntityType, Operation
+from ..audit_types import Actor, ActorRef, EntityRef, EntityType, Operation
 
 _ALWAYS_EXCLUDED = frozenset({'id', 'created_at', 'updated_at'})
 REDACTED = '[redacted]'
@@ -114,16 +114,20 @@ class AuditedMixIn(DBModelMixIn):
 
         return diff
 
+    @property
+    def entity_ref(self) -> EntityRef:
+        return EntityRef(
+            entity_type=self.__entity_type__,
+            entity_id=self.id,
+            entity_name=getattr(self, 'name', None)
+        )
+
     def _audit(self, session: Session, ctx: ActorRef, op: Operation, details: dict[str, Any] | None = None) -> None:
         from api.db.models import Audit
         Audit.record(
             session,
             actor_ref=ctx,
-            entity_ref=EntityRef(
-                entity_type=self.__entity_type__,
-                entity_id=self.id,
-                entity_name=getattr(self, self.__audit_name_field__, None),
-            ),
+            entity_ref=self.entity_ref,
             operation=op,
             details=details,
         )
@@ -158,3 +162,21 @@ class AuditedMixIn(DBModelMixIn):
         session.flush()
         if commit:
             session.commit()
+
+class ActorMixIn:
+    """Lets a table row stand in as the actor of an audit entry."""
+    __actor_type__: ClassVar[Actor]
+
+    if TYPE_CHECKING:
+        id: int | None  # type checkers only - the model defines the real column
+
+    def actor_ref_for(self, remote_addr: str | None = None) -> ActorRef:
+        if self.id is None:
+            raise ValueError(f'{type(self).__name__} has no id yet. insert or flush the row before using it as an actor')
+        return ActorRef(self.__actor_type__, self.id, remote_addr=remote_addr)
+
+    @property
+    def actor_ref(self) -> ActorRef:
+        if self.id is None:
+            raise ValueError(f'{type(self).__name__} has no id yet. insert or flush the row before using it as an actor')
+        return ActorRef(self.__actor_type__, self.id)

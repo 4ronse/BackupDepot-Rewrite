@@ -65,5 +65,5 @@ class DBModelMixIn(SQLModel):
     def get_or_404(cls, session: Session, id: int) -> Self:
         row = cls.get(session, id)
         if row is None:
-            raise HTTPException(404)
+            raise HTTPException(404, detail=f'{cls.__name__} with id {id} not found.')
         return row

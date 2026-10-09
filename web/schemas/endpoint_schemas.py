@@ -1,7 +1,7 @@
-from pydantic import Field
+from pydantic import AwareDatetime, Field
 
 from api.models.endpoint import Endpoint, OnLimitAction
-from web.schemas.shared import CreateSchema, ReadSchema
+from web.schemas.shared import CreateSchema, ReadSchema, Strict, UpdateSchema
 
 
 class EndpointCreate(CreateSchema[Endpoint]):
@@ -28,7 +28,6 @@ class EndpointCreate(CreateSchema[Endpoint]):
 
 
 class EndpointRead(ReadSchema[Endpoint]):
-    id: int
     name: str
     storage_backend_id: int
     created_by: int
@@ -50,5 +49,21 @@ class EndpointRead(ReadSchema[Endpoint]):
             max_age_days=row.max_age_days,
             max_total_bytes=row.max_total_bytes,
             max_file_size_bytes=row.max_file_size_bytes,
-            on_limit_action=row.on_limit_action
+            on_limit_action=row.on_limit_action,
+
+            created_at=row.created_at
         )
+
+
+class EndpointImpact(Strict):
+    upload_keys: int
+    backups: int
+    backups_by_status: dict[str, int]
+    total_bytes: int
+    in_flight: bool  # Backups in progress - block deletion no matter what
+    confirm_token: str | None
+
+
+class EndpointUpdate(UpdateSchema[Endpoint]):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+

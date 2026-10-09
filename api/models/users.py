@@ -7,6 +7,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, InvalidHashError
 
 from api.db.mixins import AuditedMixIn, UpdatedMixIn
+from api.db.mixins.audited_mixin import ActorMixIn
 from api.db.secret_box import SecretBox
 from api.db.utc_datetime import UTCDateTime
 from api.db.audit_types import Actor, ActorRef, EntityType
@@ -27,8 +28,9 @@ class UserStatus(str, Enum):
     DELETED = 'DELETED'
 
 
-class User(AuditedMixIn, UpdatedMixIn, table=True):
+class User(AuditedMixIn, UpdatedMixIn, ActorMixIn, table=True):
     __tablename__: str = 'users'
+    __actor_type__ = Actor.USER
     __entity_type__ = EntityType.USER
     __audit_redacted__ = frozenset({'password_hash'})
 
@@ -40,10 +42,6 @@ class User(AuditedMixIn, UpdatedMixIn, table=True):
 
     last_login_at: datetime | None = UTCDateTime.Field(default=None, nullable=True)
     last_login_ip: str | None = Field(default=None, nullable=True)
-
-    @property
-    def actor_ref(self) -> ActorRef:
-        return ActorRef(Actor.USER, self.id, self.last_login_ip)
 
     @property
     def password(self) -> NoReturn:

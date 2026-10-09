@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import shutil
-from typing import Iterator
+from typing import Iterable, Iterator
 
 from pydantic import BaseModel, field_validator
 
@@ -9,7 +9,7 @@ from api.storage.base_provider import StorageUsage
 from api.storage.exceptions import ObjectNotFound, StorageError
 from api.storage.registry import register
 
-from ..base_provider import CHUNK_SIZE, StorageProvider, EmptyModel, StorageType, StoredObject
+from ..base_provider import CHUNK_SIZE, StorageProvider, EmptyModel, StorageType, StoredObject, write_stream
 
 
 __all__ = ['LocalConfig', 'LocalProvider']
@@ -64,6 +64,9 @@ class LocalProvider(StorageProvider[LocalConfig, EmptyModel]):
             self._copy_in(source, dest)
 
         return StoredObject(ref=key, size=size)
+
+    def stream_put(self, key: str, chunks: Iterable[bytes]) -> StoredObject:
+        return write_stream(self, key, chunks)
 
     @staticmethod
     def _copy_in(source: Path, dest: Path) -> None:

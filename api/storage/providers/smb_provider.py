@@ -4,7 +4,7 @@ import smbclient
 
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import Iterator
+from typing import Iterable, Iterator
 
 from pydantic import BaseModel, Field, field_validator
 from smbprotocol.exceptions import (
@@ -125,29 +125,32 @@ class SMBProvider(StorageProvider[SMBConfig, SMBSecrets]):
                     raise
 
     def put(self, key: str, source: Path) -> StoredObject:
+        with source.open('rb') as f:
+            return self.stream_put(key, iter(lambda: f.read(CHUNK_SIZE), b''))
+
+    def stream_put(self, key: str, chunks: Iterable[bytes]) -> StoredObject:
         c = self.config
-        dst_path = self._unc(key)
-        tmp_path = dst_path + '.part'
-        share_root = f'\\\\{c.host}\\{c.share}'
+        dst = self._unc(key)
+        tmp = dst + '.part'
         size = 0
 
         with self._errors(), self._conn() as kw:
             parent = self._unc(posixpath.dirname(key.replace('\\', '/')))
-            if parent != share_root:
+            if parent != f'\\\\{c.host}\\{c.share}':
                 smbclient.makedirs(parent, exist_ok=True, **kw)
             try:
-                with source.open('rb') as src, smbclient.open_file(tmp_path, 'wb', **kw) as out:
-                    for chunk in iter(lambda: src.read(CHUNK_SIZE), b''):
+                with smbclient.open_file(tmp, 'wb', **kw) as out:
+                    for chunk in chunks:
                         out.write(chunk)
                         size += len(chunk)
-                smbclient.replace(tmp_path, dst_path, **kw)
+                smbclient.replace(tmp, dst, **kw)
             except BaseException:
                 try:
-                    smbclient.unlink(tmp_path, **kw)
+                    smbclient.unlink(tmp, **kw)
                 except Exception:
                     pass
                 raise
-        return StoredObject(key, size)  # the relative key is the ref
+        return StoredObject(key, size)
 
     def stream(self, ref: str) -> Iterator[bytes]:
         with self._errors():

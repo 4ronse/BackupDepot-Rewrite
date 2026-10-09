@@ -27,7 +27,7 @@ _SORT_COLUMNS = {
 def read_audits(
     session: SessionDep,
     order_by: AuditSort = 'created_at',
-    direction: Literal['asc', 'desc'] = 'desc',
+    direction: Literal['asc', 'desc'] = 'asc',
     entity_type: EntityType | None = None,
     entity_id: int | None = None,
     actor_id: int | None = None,

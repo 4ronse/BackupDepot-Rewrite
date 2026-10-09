@@ -7,6 +7,7 @@ from sqlmodel import Field, Index
 from api.db.mixins import AuditedMixIn, UpdatedMixIn
 from api.db.utc_datetime import UTCDateTime
 from api.db.models.audit import EntityType
+from api.db.utils import utcnow
 
 
 class BackupStatus(str, Enum):
@@ -23,6 +24,12 @@ class Backup(AuditedMixIn, UpdatedMixIn, table=True):
         BackupStatus.UPLOADING_TO_SERVER,
         BackupStatus.MOVING_TO_STORAGE_BACKEND,
         BackupStatus.DELETING_FROM_STORAGE_BACKEND
+    }
+
+    NOT_STORED_STATUSES: ClassVar[set[BackupStatus]] = {
+        BackupStatus.REJECTED,
+        BackupStatus.FAILED,
+        BackupStatus.DELETED
     }
 
 
@@ -48,3 +55,7 @@ class Backup(AuditedMixIn, UpdatedMixIn, table=True):
     storage_ref: str = Field(nullable=False)
 
     deleted_at: datetime | None = UTCDateTime.Field(default=None, nullable=True)
+
+    def set_deleted(self, reason: str = 'Deleted by user'):
+        self.status = BackupStatus.DELETED
+        self.deleted_at = utcnow()

@@ -6,7 +6,6 @@ from web.schemas.shared import ReadSchema
 
 
 class AuditRead(ReadSchema[Audit]):
-    id: int
     actor: ActorRef
     entity: EntityRef
     details: dict[str, Any]
@@ -29,5 +28,7 @@ class AuditRead(ReadSchema[Audit]):
             id=row.id,  # type: ignore
             actor=actor,
             entity=entity,
-            details=row.details or {}
+            details=row.details or {},
+
+            created_at=row.created_at
         )

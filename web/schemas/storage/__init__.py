@@ -2,12 +2,12 @@ from datetime import datetime
 from typing import Any
 
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import Field
 
 from api.models.storage_backend import StorageBackend
 from api.storage import registry
 from api.storage.base_provider import EmptyModel, StorageProvider, StorageType
-from web.schemas.shared import ReadSchema, Strict, secret_keys
+from web.schemas.shared import ReadSchema, Strict, UpdateSchema, merge, secret_keys
 
 from .local_schemas import LocalBackendCreate
 from .smb_schemas import SMBBackendCreate
@@ -74,41 +74,22 @@ class StorageBackendImpact(Strict):
     confirm_token: str | None
 
 
-def _merge(model: type[BaseModel], current: dict[str, Any] | None, patch: dict[str, Any], field: str) -> dict[str, Any]:
-    try:
-        return model.model_validate({**(current or {}), **patch}).model_dump(mode='json')
-    except ValidationError as e:
-        raise RequestValidationError([
-            {**err, 'loc': ('body', field, *err['loc'])}
-            for err in e.errors(include_url=False, include_context=False, include_input=False)
-        ]) from None
-
-class StorageBackendUpdate(Strict):
+class StorageBackendUpdate(UpdateSchema[StorageBackend]):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     config: dict[str, Any] | None = None
     secrets: dict[str, Any] | None = None
 
-    def apply(self, row: StorageBackend) -> set[str]:
-        provider = registry.registered_providers()[row.type]
-        data = self.model_dump(exclude_unset=True)
-        changed: set[str] = set()
+    def merge_config(self, row: StorageBackend, patch: dict[str, Any]) -> dict[str, Any]:
+        model = registry.registered_providers()[row.type].config_model
+        return merge(model, row.config, patch, 'config')
 
-        if 'name' in data:
-            row.name = data['name']
-
-        if 'config' in data:
-            new = _merge(provider.config_model, row.config, data['config'], 'config')
-            changed = {k for k in new.keys() | row.config.keys() if new.get(k) != row.config.get(k)}
-            row.config = new
-
-        if 'secrets' in data:
-            if provider.secrets_model is EmptyModel:
-                raise RequestValidationError([{
-                    'loc': ('body', 'secrets'),
-                    'msg': f'{row.type.value} backends have no secrets',
-                    'type': 'value_error'
-                }])
-            row.secrets = _merge(provider.secrets_model, row.secrets, data['secrets'], 'secrets')
-
-        return changed
+    def merge_secrets(self, row: StorageBackend, patch: dict[str, Any]) -> dict[str, Any]:
+        model = registry.registered_providers()[row.type].secrets_model
+        if model is EmptyModel:
+            raise RequestValidationError([{
+                'loc': ('body', 'secrets'),
+                'msg': f'{row.type.value} backends have no secrets',
+                'type': 'value_error',
+            }])
+        return merge(model, row.secrets, patch, 'secrets')
 

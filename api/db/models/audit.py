@@ -25,7 +25,7 @@ class Audit(DBModelMixIn, table=True):
     remote_addr: str | None = Field(default=None, nullable=True)
 
     @classmethod
-    def record(cls, session: Session, /, *, actor_ref: ActorRef, entity_ref: EntityRef, operation: Operation, details: dict | None) -> 'Audit':
+    def record(cls, session: Session, /, *, actor_ref: ActorRef, entity_ref: EntityRef, operation: Operation, details: dict | None = None) -> 'Audit':
         audit = cls(
             actor=actor_ref.actor,
             actor_id=actor_ref.actor_id,

@@ -74,6 +74,12 @@ class StorageProvider[C: BaseModel, S: BaseModel](ABC):
         """Yield the object in chunks. Raises ObjectNotFound."""
 
     @abst
+    def stream_put(self, key: str, chunks: Iterable[bytes]) -> StoredObject:
+        """Store `source` under `key`. On success the provider may move or copy it,
+        so the caller deletes the staging file afterwards (missing_ok). On failure
+        the source is left untouched, so the move can be retried."""
+
+    @abst
     def delete(self, ref: str) -> None:
         """Idempotent. If file is missing, deletion is still successful."""
 
